@@ -1,0 +1,35 @@
+# MySQL parameters.
+mysql:
+  host: 'localhost'
+  port: 3306
+  user: 'root'
+  database: 'velocitycore'
+  password: 'password'
+
+# Redis parameters.
+redis:
+  host: 'localhost'
+  port: 6379
+  password: 'password'
+  timeout: 2000
+
+# Discord section
+discord:
+  token: ''
+  verify:
+    enabled: false
+    verified-role: 'roleId'
+    donor-role: 'roleId'
+    mapping:
+      - 'rankName:roleId'
+
+# Server section.
+server:
+  auth: 'authlobby'
+  hubs:
+    - 'lobby-1'
+
+auto-reconnect:
+  enabled: true
+  available-in:
+    - 'survival'
