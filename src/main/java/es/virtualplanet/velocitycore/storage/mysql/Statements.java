@@ -5,19 +5,20 @@ public enum Statements {
     USERS_TABLE("CREATE TABLE IF NOT EXISTS `users` (" +
             "`id` INT NOT NULL AUTO_INCREMENT, " +
             "`username` VARCHAR(20) NOT NULL, " +
-            "`uuid` VARCHAR(54) NOT NULL, " +
+            "`uuid` BINARY(16) NOT NULL, " +
             "`first_join` TIMESTAMP, " +
             "`last_server` VARCHAR(20), " +
             "`discord_id` LONG NOT NULL, " +
             "PRIMARY KEY (`id`), " +
             "UNIQUE (uuid));"),
 
+    // TODO - Tomar la UUID de la tabla de usuarios.
     STAFF_TABLE("CREATE TABLE IF NOT EXISTS `staff_data` (" +
             "`id` INT NOT NULL AUTO_INCREMENT, " +
             "`username` VARCHAR(20) NOT NULL, " +
-            "`uuid` VARCHAR(54) NOT NULL, " +
+            "`uuid` BINARY(16) NOT NULL, " +
             "`password` VARCHAR(64), " +
-            "`staffmode` TINYINT(1), " +
+            "`staff_mode` TINYINT(1), " +
             "PRIMARY KEY (`id`), " +
             "UNIQUE (uuid));");
 
@@ -31,7 +32,7 @@ public enum Statements {
             "PRIMARY KEY (`id`), " +
             "FOREIGN KEY (`user_id`) REFERENCES users(`id`), " +
             "FOREIGN KEY (`mc_uuid`) REFERENCES users(`uuid`), " +
-            "FOREIGN KEY (`mc_username`) REFERENCES users(`username`));");*/
+            "FOREIGN KEY (`mc_name`) REFERENCES users(`username`));");*/
 
     private final String statement;
 

@@ -23,6 +23,11 @@ public class DiscordCommand implements SimpleCommand {
             return;
         }
 
+        if (!player.hasPermission("virtual.command.discord")) {
+            player.sendMessage(Component.text("No tienes permisos para ejecutar este comando.").color(NamedTextColor.RED));
+            return;
+        }
+
         if (plugin.getDiscordManager().getCodeMap().containsValue(player.getUniqueId())) {
             player.sendMessage(Component.text("Ya tienes un código de verificación pendiente.").color(NamedTextColor.RED));
             return;
@@ -35,7 +40,7 @@ public class DiscordCommand implements SimpleCommand {
             return;
         }
 
-        String code = Utils.generateCode(6, true, false);
+        String code = Utils.generateCode(8, true, true);
 
         plugin.getDiscordManager().getCodeMap().put(code, player.getUniqueId());
         player.sendMessage(Component.text("Tu código es: ").color(NamedTextColor.WHITE).append(Component.text(code).color(NamedTextColor.GREEN)));

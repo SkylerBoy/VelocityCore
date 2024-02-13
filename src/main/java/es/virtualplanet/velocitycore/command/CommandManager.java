@@ -14,10 +14,11 @@ public class CommandManager {
     }
 
     public void registerCommands() {
+        registerCommand("registerstaff", new RegisterStaffCommand(plugin), "rs", "regstaff");
+        registerCommand("deletestaff", new DeleteStaffCommand(plugin), "dl", "delstaff");
         registerCommand("pass", new PassCommand(plugin));
         registerCommand("setpass", new SetPassCommand(plugin));
-        registerCommand("staffchat", new StaffChatCommand(plugin));
-        //registerCommand("fallback", new FallbackCommand(plugin), "lobby", "hub");
+        registerCommand("staffchat", new StaffChatCommand(plugin), "sc");
         registerCommand("discord", new DiscordCommand(plugin), "discordlink", "discordverify", "verify");
         registerCommand("stream", new StreamCommand(plugin), "directo");
     }

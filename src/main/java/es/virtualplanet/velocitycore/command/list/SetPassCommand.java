@@ -26,53 +26,33 @@ public class SetPassCommand implements SimpleCommand {
             return;
         }
 
-        if (!player.hasPermission("group.helper")) {
-            return;
-        }
-
         StaffPlayer staffPlayer = plugin.getStaffManager().getStaffPlayer(player.getUniqueId());
 
-        if (staffPlayer.getPassword() == null) {
-            if (invocation.arguments().length != 2) {
-                player.sendMessage(Component.text()
-                        .content("Uso correcto: ").color(TextColor.color(0xFFFFFF))
-                        .append(Component.text("/setpass <contraseña> <contraseña>").color(TextColor.color(0xFCFF7B))));
-                return;
-            }
-
-            if (!invocation.arguments()[0].equals(invocation.arguments()[1])) {
-                player.sendMessage(Component.text("¡Vaya! Parece que las contraseñas no coinciden.").color(TextColor.color(0xFF434B)));
-                return;
-            }
-
-            if (invocation.arguments()[0].length() < 3 || invocation.arguments()[0].length() > 12) {
-                player.sendMessage(Component.text("La contraseña debe tener entre 3 y 12 caracteres.").color(TextColor.color(0xFF434B)));
-                return;
-            }
-
-            staffPlayer.setPassword(Utils.sha256(invocation.arguments()[0]));
-            player.sendMessage(Component.text("¡Tu contraseña fue actualizada con éxito!").color(TextColor.color(0x00FF00)));
+        if (staffPlayer == null) {
+            player.sendMessage(Component.text("Ha ocurrido un error, contacta con un administrador.").color(TextColor.color(0xFF434B)));
             return;
         }
 
         if (invocation.arguments().length != 2) {
             player.sendMessage(Component.text()
                     .content("Uso correcto: ").color(TextColor.color(0xFFFFFF))
-                    .append(Component.text("/setpass <contraseña> <contraseña>").color(TextColor.color(0xFCFF7B))));
+                    .append(Component.text("/setpass <old> <new>").color(TextColor.color(0xFCFF7B))));
             return;
         }
+
+        String newPassword = Utils.sha256(invocation.arguments()[1]);
 
         if (!Utils.sha256(invocation.arguments()[0]).equals(staffPlayer.getPassword())) {
             player.sendMessage(Component.text("¡Vaya! Parece que la contraseña es incorrecta.").color(TextColor.color(0xFF434B)));
             return;
         }
 
-        if (Utils.sha256(invocation.arguments()[1]).equals(staffPlayer.getPassword())) {
+        if (newPassword.equals(staffPlayer.getPassword())) {
             player.sendMessage(Component.text("¡Hey! No puedes usar la misma contraseña.").color(TextColor.color(0xFF434B)));
             return;
         }
 
-        staffPlayer.setPassword(Utils.sha256(invocation.arguments()[1]));
+        staffPlayer.setPassword(newPassword);
         player.sendMessage(Component.text("¡Tu contraseña fue actualizada con éxito!").color(TextColor.color(0x84FF8F)));
     }
 }

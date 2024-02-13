@@ -40,6 +40,11 @@ public class PassCommand implements SimpleCommand {
 
         StaffPlayer staffPlayer = plugin.getStaffManager().getStaffPlayer(player.getUniqueId());
 
+        if (staffPlayer == null) {
+            player.sendMessage(Component.text("Ha ocurrido un error, contacta con un administrador.").color(TextColor.color(0xFF434B)));
+            return;
+        }
+
         if (staffPlayer.isLogged()) {
             player.sendMessage(Component.text("¡Ya has iniciado sesión correctamente!").color(TextColor.color(0xFF434B)));
             return;

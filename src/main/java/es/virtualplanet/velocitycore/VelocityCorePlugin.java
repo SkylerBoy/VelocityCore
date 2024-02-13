@@ -67,6 +67,7 @@ public class VelocityCorePlugin {
     private final Logger logger;
 
     private MainConfig config;
+
     private LuckPerms luckPerms;
 
     @Inject

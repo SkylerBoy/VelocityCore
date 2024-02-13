@@ -16,7 +16,6 @@ import java.sql.*;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class MySQL {
 
@@ -101,13 +100,13 @@ public class MySQL {
         CompletableFuture.runAsync(() -> {
             try(Connection connection = getConnection()) {
                 PreparedStatement statement = connection.prepareStatement("SELECT * FROM users WHERE uuid = ? LIMIT 1");
-                statement.setString(1, user.getUniqueId().toString());
+                statement.setBytes(1, Utils.convertUUIDToBytes(user.getUniqueId()));
                 ResultSet resultSet = statement.executeQuery();
 
                 if(resultSet.next()) {
                     // User data.
                     user.setId(resultSet.getInt("id"));
-                    user.setUniqueId(UUID.fromString(resultSet.getString("uuid")));
+                    user.setUniqueId(Utils.convertBytesToUUID(resultSet.getBytes("uuid")));
                     user.setName(resultSet.getString("username"));
                     user.setFirstJoin(resultSet.getTimestamp("first_join"));
                     user.setLastServer(resultSet.getString("last_server"));
@@ -121,7 +120,7 @@ public class MySQL {
                 }
 
             } catch (SQLException exception) {
-                exception.printStackTrace();
+                throw new RuntimeException(exception);
             }
         });
     }
@@ -134,7 +133,7 @@ public class MySQL {
                         "(?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
 
                 statement.setString(1, user.getName());
-                statement.setString(2, user.getUniqueId().toString());
+                statement.setBytes(2, Utils.convertUUIDToBytes(user.getUniqueId()));
 
                 statement.setTimestamp(3, Timestamp.from(Instant.now()));
                 statement.setString(4, null);
@@ -152,7 +151,7 @@ public class MySQL {
 
                 plugin.getServer().getEventManager().fire(new UserDataLoadEvent(user));
             } catch (SQLException exception) {
-                exception.printStackTrace();
+                throw new RuntimeException(exception);
             }
         });
     }
@@ -160,10 +159,7 @@ public class MySQL {
 
     public void saveUserDataSync(User user) {
         try (Connection connection = getConnection()) {
-
-            // PlayerData.
-            PreparedStatement statement = connection.prepareStatement("UPDATE `users` SET " +
-                    "username = ?, last_server = ?, discord_id = ? WHERE id = ? LIMIT 1");
+            PreparedStatement statement = connection.prepareStatement("UPDATE `users` SET username = ?, last_server = ?, discord_id = ? WHERE id = ? LIMIT 1");
 
             statement.setString(1, user.getName());
             statement.setString(2, user.getLastServer());
@@ -173,7 +169,7 @@ public class MySQL {
             statement.executeUpdate();
             statement.close();
         } catch (SQLException exception) {
-            exception.printStackTrace();
+            throw new RuntimeException(exception);
         }
     }
 
@@ -182,63 +178,61 @@ public class MySQL {
             try (Connection connection = getConnection()) {
                 PreparedStatement statement = connection.prepareStatement("SELECT uuid FROM `users` WHERE uuid = ? LIMIT 1");
 
-                statement.setString(1, uniqueId.toString());
+                statement.setBytes(1, Utils.convertUUIDToBytes(uniqueId));
                 callback.call(statement.executeQuery().next());
 
                 statement.close();
             } catch (SQLException exception){
-                exception.printStackTrace();
+                throw new RuntimeException(exception);
             }
         });
     }
 
     public void getStaffData(StaffPlayer staffPlayer) {
         staffExists(staffPlayer.getUniqueId(), (exists) -> {
-            if(exists) {
-                loadStaffData(staffPlayer);
+            if(!exists) {
                 return;
             }
 
-            registerStaff(staffPlayer);
+            loadStaffData(staffPlayer);
         });
     }
 
     private void loadStaffData(StaffPlayer staffPlayer) {
         CompletableFuture.runAsync(() -> {
-            try(Connection connection = getConnection()) {
-                PreparedStatement statement = connection.prepareStatement("SELECT * FROM staff_data WHERE uuid = ? LIMIT 1");
-                statement.setString(1, staffPlayer.getUniqueId().toString());
+            try (Connection connection = getConnection()) {
+                PreparedStatement statement = connection.prepareStatement("SELECT id, password, staff_mode FROM staff_data WHERE uuid = ? LIMIT 1");
+                statement.setBytes(1, Utils.convertUUIDToBytes(staffPlayer.getUniqueId()));
                 ResultSet resultSet = statement.executeQuery();
 
                 if (resultSet.next()) {
                     staffPlayer.setId(resultSet.getInt("id"));
-                    staffPlayer.setUniqueId(UUID.fromString(resultSet.getString("uuid")));
-                    staffPlayer.setName(resultSet.getString("username"));
                     staffPlayer.setPassword(resultSet.getString("password"));
-                    staffPlayer.setStaffChatEnabled(resultSet.getBoolean("staffmode"));
+                    staffPlayer.setStaffChatEnabled(resultSet.getBoolean("staff_mode"));
 
+                    plugin.getStaffManager().getStaffList().put(staffPlayer.getUniqueId(), staffPlayer);
                     plugin.getServer().getEventManager().fire(new StaffDataLoadEvent(staffPlayer));
                 }
 
                 statement.close();
                 resultSet.close();
             } catch (SQLException exception) {
-                exception.printStackTrace();
+                throw new RuntimeException(exception);
             }
         });
     }
 
-    private void registerStaff(StaffPlayer staffPlayer) {
+    public void registerStaffPlayer(StaffPlayer staffPlayer) {
         CompletableFuture.runAsync(() -> {
             try (Connection connection = getConnection()){
                 PreparedStatement statement = connection.prepareStatement("INSERT INTO `staff_data` (" +
-                        "username, uuid, password, staffmode) VALUES (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+                        "username, uuid, password, staff_mode) VALUES (?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
 
-                String password = Utils.generateCode(4, true, false);
+                String password = Utils.generateCode(6, true, true);
                 String hashedPassword = Utils.sha256(password);
 
                 statement.setString(1, staffPlayer.getName());
-                statement.setString(2, staffPlayer.getUniqueId().toString());
+                statement.setBytes(2, Utils.convertUUIDToBytes(staffPlayer.getUniqueId()));
                 statement.setString(3, hashedPassword);
                 statement.setBoolean(4, false);
                 statement.executeUpdate();
@@ -252,22 +246,49 @@ public class MySQL {
                 statement.close();
 
                 staffPlayer.setPassword(hashedPassword);
-                plugin.getServer().getEventManager().fire(new StaffDataLoadEvent(staffPlayer));
 
-                plugin.getServer().getScheduler().buildTask(plugin, () ->
-                        plugin.getServer().getPlayer(staffPlayer.getUniqueId()).ifPresent(player -> {
-                            player.sendMessage(Component.text("Se ha generado una contraseña de staff temporal.").color(NamedTextColor.YELLOW));
-                            player.sendMessage(Component.text("Puedes cambiarla usando: ").color(NamedTextColor.WHITE).append(Component.text("/setpass " + password + " <nueva>").color(NamedTextColor.GOLD)));
-                })).delay(1, TimeUnit.SECONDS).schedule();
+                staffPlayer.toPlayer().sendMessage(Component.text("Has sido registrado con una contraseña temporal.").color(NamedTextColor.WHITE));
+                staffPlayer.toPlayer().sendMessage(Component.text("Puedes cambiarla usando: ").color(NamedTextColor.WHITE).append(Component.text("/setpass " + password + " <nueva>").color(NamedTextColor.YELLOW)));
+
+                plugin.getStaffManager().getStaffList().put(staffPlayer.getUniqueId(), staffPlayer);
+                plugin.getServer().getEventManager().fire(new StaffDataLoadEvent(staffPlayer));
             } catch (SQLException exception) {
-                exception.printStackTrace();
+                throw new RuntimeException(exception);
+            }
+        });
+    }
+
+    public void unregisterStaffPlayer(UUID uniqueId) {
+        CompletableFuture.runAsync(() -> {
+            try (Connection connection = getConnection()) {
+                   PreparedStatement statement = connection.prepareStatement("DELETE FROM `staff_data` WHERE uuid = ?");
+                statement.setBytes(1, Utils.convertUUIDToBytes(uniqueId));
+
+                statement.executeUpdate();
+                statement.close();
+            } catch (SQLException exception) {
+                throw new RuntimeException(exception);
+            }
+        });
+    }
+
+    public void unregisterStaffPlayer(String username) {
+        CompletableFuture.runAsync(() -> {
+            try (Connection connection = getConnection()) {
+                PreparedStatement statement = connection.prepareStatement("DELETE FROM `staff_data` WHERE username = ?");
+                statement.setString(1, username);
+
+                statement.executeUpdate();
+                statement.close();
+            } catch (SQLException exception) {
+                throw new RuntimeException(exception);
             }
         });
     }
 
     public void saveStaffDataSync(StaffPlayer staffPlayer) {
         try (Connection connection = getConnection()) {
-            PreparedStatement statement = connection.prepareStatement("UPDATE `staff_data` SET username = ?, password = ?, staffmode = ? WHERE id = ? LIMIT 1");
+            PreparedStatement statement = connection.prepareStatement("UPDATE `staff_data` SET username = ?, password = ?, staff_mode = ? WHERE id = ? LIMIT 1");
 
             statement.setString(1, staffPlayer.getName());
             statement.setString(2, staffPlayer.getPassword());
@@ -277,7 +298,7 @@ public class MySQL {
             statement.executeUpdate();
             statement.close();
         } catch (SQLException exception) {
-            exception.printStackTrace();
+            throw new RuntimeException(exception);
         }
     }
 
@@ -286,12 +307,12 @@ public class MySQL {
             try (Connection connection = getConnection()) {
                 PreparedStatement statement = connection.prepareStatement("SELECT uuid FROM `staff_data` WHERE uuid = ? LIMIT 1");
 
-                statement.setString(1, uniqueId.toString());
+                statement.setBytes(1, Utils.convertUUIDToBytes(uniqueId));
                 callback.call(statement.executeQuery().next());
 
                 statement.close();
             } catch (SQLException exception){
-                exception.printStackTrace();
+                throw new RuntimeException(exception);
             }
         });
     }
@@ -310,12 +331,11 @@ public class MySQL {
             statement.close();
             resultSet.close();
         } catch (SQLException exception) {
-            exception.printStackTrace();
+            throw new RuntimeException(exception);
         }
 
         return 0L;
     }
-
 
     /*
     protected final VelocityCorePlugin plugin = VelocityCorePlugin.getInstance();

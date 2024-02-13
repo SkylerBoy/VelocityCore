@@ -1,5 +1,6 @@
 package es.virtualplanet.velocitycore.common;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
@@ -7,6 +8,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 import java.util.Random;
+import java.util.UUID;
 
 public class Utils {
 
@@ -56,5 +58,19 @@ public class Utils {
 
     public static String getDateFormatted(Instant instant) {
         return new SimpleDateFormat("dd/MM/yyyy HH:mm").format(Date.from(instant));
+    }
+
+    public static byte[] convertUUIDToBytes(UUID uuid) {
+        ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+        bb.putLong(uuid.getMostSignificantBits());
+        bb.putLong(uuid.getLeastSignificantBits());
+        return bb.array();
+    }
+
+    public static UUID convertBytesToUUID(byte[] bytes) {
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        long mostSignificantBits = bb.getLong();
+        long leastSignificantBits = bb.getLong();
+        return new UUID(mostSignificantBits, leastSignificantBits);
     }
 }

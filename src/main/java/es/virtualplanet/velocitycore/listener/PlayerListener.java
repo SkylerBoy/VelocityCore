@@ -71,19 +71,17 @@ public class PlayerListener {
         plugin.getUserManager().saveUserData(user);
 
         // Save staff data if player is staff
-        if (!player.hasPermission("group.helper")) {
-            return;
-        }
-
         StaffPlayer staffPlayer = plugin.getStaffManager().getStaffPlayer(player.getUniqueId());
 
+        // Return if staffPlayer is null or already registered.
         if (staffPlayer == null) {
             return;
         }
 
+        // If staffPlayer is registered, save the data.
         plugin.getStaffManager().saveStaffData(staffPlayer);
 
-        // Send a message to the Discord log channel.
+        // Send message to the Discord log channel.
         if (!staffPlayer.isLogged()) {
             return;
         }
@@ -95,7 +93,7 @@ public class PlayerListener {
             return;
         }
 
-        TextChannel channel = guild.getTextChannelById("1043203832882135163");
+        TextChannel channel = plugin.getDiscordManager().getChannelMap().get("staff-logs");
 
         if (channel == null) {
             plugin.getLogger().info("No se ha podido obtener el canal de Discord.");
@@ -106,10 +104,9 @@ public class PlayerListener {
                 .setColor(0xe76161)
                 .setAuthor(
                         staffPlayer.getName() + " se ha desconectado.",
-                        "https://app.analyse.net/dashboard/player/" + staffPlayer.getUniqueId(),
                         "https://crafthead.net/helm/" + staffPlayer.getUniqueId() + "/64.png");
 
-        plugin.getDiscordManager().getChannelMap().get("staff-logs").sendMessageEmbeds(builder.build()).queue();
+        channel.sendMessageEmbeds(builder.build()).queue();
     }
 
     @Subscribe
@@ -121,7 +118,7 @@ public class PlayerListener {
             return;
         }
 
-        TextChannel channel = guild.getTextChannelById("1043203832882135163");
+        TextChannel channel = plugin.getDiscordManager().getChannelMap().get("staff-logs");
 
         if (channel == null) {
             plugin.getLogger().info("No se ha podido obtener el canal de Discord.");
@@ -133,10 +130,9 @@ public class PlayerListener {
                 .setColor(0xb2f5a1)
                 .setAuthor(
                         staffPlayer.getName() + " se ha conectado.",
-                        "https://app.analyse.net/dashboard/player/" + staffPlayer.getUniqueId(),
                         "https://crafthead.net/helm/" + staffPlayer.getUniqueId() + "/64.png");
 
-        plugin.getDiscordManager().getChannelMap().get("staff-logs").sendMessageEmbeds(builder.build()).queue();
+        channel.sendMessageEmbeds(builder.build()).queue();
     }
 
     @Subscribe(order = PostOrder.FIRST)
@@ -168,7 +164,7 @@ public class PlayerListener {
         for (Map.Entry<UUID, StaffPlayer> entry : plugin.getStaffManager().getStaffList().entrySet()) {
             Player target = plugin.getServer().getPlayer(entry.getKey()).orElse(null);
 
-            if (target == null || !target.hasPermission("group.helper")) {
+            if (target == null) {
                 continue;
             }
 
@@ -178,19 +174,21 @@ public class PlayerListener {
 
     @Subscribe(order = PostOrder.FIRST)
     public void onCommandExecute(CommandExecuteEvent event) {
-        if (!(event.getCommandSource() instanceof Player player)) {
+        if (!(event.getCommandSource() instanceof Player player) || !player.hasPermission("group.helper")) {
             return;
         }
 
-        if (!player.hasPermission("group.helper")) {
-            return;
-        }
-
-        if (plugin.getStaffManager().getWhitelistedCommands().contains(event.getCommand().split(" ")[0])) {
+        if (plugin.getStaffManager().getWhitelistedCommands().contains(event.getCommand().toLowerCase().split(" ")[0].toLowerCase())) {
             return;
         }
 
         StaffPlayer staffPlayer = plugin.getStaffManager().getStaffPlayer(player.getUniqueId());
+
+        if (staffPlayer == null) {
+            event.setResult(CommandExecuteEvent.CommandResult.denied());
+            player.sendMessage(Component.text("Contacta con administración para habilitar tu cuenta. 1").color(TextColor.color(0xFF434B)));
+            return;
+        }
 
         if (staffPlayer.isLogged()) {
             return;
@@ -199,6 +197,4 @@ public class PlayerListener {
         event.setResult(CommandExecuteEvent.CommandResult.denied());
         player.sendMessage(Component.text("¡Ey! Primero debes verificar tu identidad.").color(TextColor.color(0xFF434B)));
     }
-
-
 }

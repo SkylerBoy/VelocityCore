@@ -1,5 +1,7 @@
 package es.virtualplanet.velocitycore.user.staff;
 
+import com.velocitypowered.api.proxy.Player;
+import es.virtualplanet.velocitycore.VelocityCorePlugin;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,7 +17,7 @@ public class StaffPlayer {
     private int id;
 
     private String password;
-    private boolean staffChatEnabled, logged = false;
+    private boolean staffChatEnabled = false, logged = false;
 
     public StaffPlayer(String name, UUID uniqueId) {
         this.name = name;
@@ -33,5 +35,9 @@ public class StaffPlayer {
         }
 
         return staffPlayer.getUniqueId().equals(uniqueId);
+    }
+
+    public Player toPlayer() {
+        return VelocityCorePlugin.getInstance().getServer().getPlayer(uniqueId).orElse(null);
     }
 }

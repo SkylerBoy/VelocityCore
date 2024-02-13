@@ -22,7 +22,6 @@ public class StaffManager {
 
     public void loadStaffData(StaffPlayer staffPlayer) {
         plugin.getMySQL().getStaffData(staffPlayer);
-        staffList.put(staffPlayer.getUniqueId(), staffPlayer);
     }
 
     public void saveStaffData(StaffPlayer staffPlayer) {
@@ -32,5 +31,17 @@ public class StaffManager {
 
     public StaffPlayer getStaffPlayer(UUID uniqueId) {
         return staffList.get(uniqueId);
+    }
+
+    public void registerStaffPlayer(StaffPlayer staffPlayer) {
+        plugin.getMySQL().registerStaffPlayer(staffPlayer);
+    }
+
+    public void unregisterStaffPlayer(UUID uniqueId) {
+        plugin.getMySQL().unregisterStaffPlayer(uniqueId);
+    }
+
+    public void unregisterStaffPlayer(String username) {
+        plugin.getMySQL().unregisterStaffPlayer(username);
     }
 }
