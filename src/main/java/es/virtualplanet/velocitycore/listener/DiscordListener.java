@@ -24,9 +24,11 @@ import java.util.UUID;
 public class DiscordListener extends ListenerAdapter {
 
     private final VelocityCorePlugin plugin;
+    private final Component PREFIX;
 
     public DiscordListener(VelocityCorePlugin plugin) {
         this.plugin = plugin;
+        this.PREFIX = plugin.getDiscordManager().getPREFIX();
     }
 
     @Override
@@ -41,37 +43,39 @@ public class DiscordListener extends ListenerAdapter {
                 String code = Objects.requireNonNull(event.getOption("code")).getAsString();
 
                 if (!plugin.getDiscordManager().getCodeMap().containsKey(code)) {
-                    event.reply("El código introducido no existe.").setEphemeral(true).queue();
+                    event.reply("<a:no:737240171677876224> El código introducido no existe o ha expirado.").setEphemeral(true).queue();
                     break;
                 }
 
                 Player player = plugin.getServer().getPlayer(plugin.getDiscordManager().getCodeMap().get(code)).orElse(null);
 
                 if (player == null) {
-                    event.reply("Cuenta asociada con " + plugin.getDiscordManager().getCodeMap().get(code).toString() + ".").setEphemeral(true).queue();
-                    plugin.getDiscordManager().getCodeMap().remove(code);
+                    event.reply("<a:no:737240171677876224> Por favor, mantente conectado al servidor.").setEphemeral(true).queue();
                     break;
                 }
 
                 if (event.getGuild() == null) {
-                    event.reply("No se ha podido verificar tu cuenta. (Error 7.0.1)").setEphemeral(true).queue();
+                    event.reply("<a:no:737240171677876224> No se ha podido verificar tu cuenta. (Error 7.0.1)").setEphemeral(true).queue();
                     break;
                 }
 
                 net.luckperms.api.model.user.User lpUser = plugin.getLuckPerms().getUserManager().getUser(player.getUniqueId());
 
                 if (lpUser == null) {
-                    event.reply("No se ha podido verificar tu cuenta. (Error 7.0.2)").setEphemeral(true).queue();
+                    event.reply("<a:no:737240171677876224> No se ha podido verificar tu cuenta. (Error 7.0.2)").setEphemeral(true).queue();
                     break;
                 }
 
                 User user = plugin.getUserManager().getUser(player.getUniqueId());
-
                 boolean donator = false;
 
-                user.setDiscordId(event.getUser().getIdLong());
-                plugin.getDiscordManager().getCodeMap().remove(code);
+                long discordId = event.getUser().getIdLong();
 
+                // Update mc user info.
+                user.setDiscordId(discordId);
+                plugin.getUserManager().updateDiscordId(user, discordId);
+
+                // Update discord user roles.
                 for (String roleMap : plugin.getDiscordManager().getDiscordInfo().getVerify().getMapping()) {
                     String rankName = roleMap.split(":")[0];
 
@@ -82,7 +86,7 @@ public class DiscordListener extends ListenerAdapter {
                     long roleId = Long.parseLong(roleMap.split(":")[1]);
 
                     if (Objects.requireNonNull(event.getGuild()).getRoleById(roleId) == null) {
-                        event.reply("No se ha podido verificar tu cuenta. (Error 7.0.3)").setEphemeral(true).queue();
+                        event.reply("<a:no:737240171677876224> No se ha podido verificar tu cuenta. (Error 7.0.3)").setEphemeral(true).queue();
                         break;
                     }
 
@@ -98,8 +102,10 @@ public class DiscordListener extends ListenerAdapter {
                 long verifiedRoleId = Long.parseLong(plugin.getDiscordManager().getDiscordInfo().getVerify().getVerifiedRole());
                 event.getGuild().addRoleToMember(event.getUser(), Objects.requireNonNull(event.getGuild().getRoleById(verifiedRoleId))).queue();
 
-                event.reply("Has vinculado la cuenta '" + player.getUsername() + "' a tu cuenta.").setEphemeral(true).queue();
-                player.sendMessage(Component.text("Has vinculado tu cuenta de Discord a tu cuenta de Minecraft.").color(NamedTextColor.GREEN));
+                event.reply("<a:si:737240158172217344> Has vinculado la cuenta '" + player.getUsername() + "' con Discord.").setEphemeral(true).queue();
+                player.sendMessage(PREFIX.append(Component.text("Has vinculado tu cuenta con Discord correctamente.")).color(NamedTextColor.WHITE));
+
+                plugin.getDiscordManager().getCodeMap().remove(code);
             }
 
             case "profile" -> {
@@ -114,7 +120,7 @@ public class DiscordListener extends ListenerAdapter {
                 String playerName = Objects.requireNonNull(event.getOption("player")).getAsString();
 
                 try {
-                    String profileAsJson = getProfileAsJson("https://app.analyse.net/api/v1/server/player/" + playerName);
+                    String profileAsJson = getProfileAsJson("https://analytics.tebex.io/api/v1/server/sessions/" + playerName);
 
                     if (profileAsJson == null) {
                         builder.setTitle("¡Vaya! Ha ocurrido un error :(").setDescription("No se ha podido encontrar el perfil de " + playerName + ".").setColor(0xe76161);
@@ -132,7 +138,7 @@ public class DiscordListener extends ListenerAdapter {
                     String targetDiscord = "Sin verificar";
 
                     String firstSession = formatter.format(Instant.parse(jsonObject.getJSONObject("player").getString("first_joined_at")));
-                    String lastSession = formatter.format(Instant.parse(jsonObject.getJSONObject("player").getString("last_logged_in_at")));
+                    String lastSession = formatter.format(Instant.parse(jsonObject.getJSONObject("player").getString("quit_at")));
 
                     long discordId;
 
@@ -162,7 +168,7 @@ public class DiscordListener extends ListenerAdapter {
 
                     event.replyEmbeds(builder.build()).setEphemeral(true).queue();
                 } catch (Exception exception) {
-                    exception.printStackTrace();
+                    throw new RuntimeException(exception.getMessage(), exception);
                 }
             }
 
@@ -178,6 +184,7 @@ public class DiscordListener extends ListenerAdapter {
 
         con.setRequestProperty("Accept", "application/json");
         con.setRequestProperty("Authorization", "");
+        con.setRequestProperty("X-Server-Token", "4000001|crPSUUA6q7IlJ8lrLIqK5hNyVyuWKijPzddkPu0Kb41badbc");
 
         int responseCode = con.getResponseCode();
 

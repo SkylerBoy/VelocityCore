@@ -6,14 +6,24 @@ import es.virtualplanet.velocitycore.VelocityCorePlugin;
 import es.virtualplanet.velocitycore.common.Utils;
 import es.virtualplanet.velocitycore.user.User;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class DiscordCommand implements SimpleCommand {
 
     private final VelocityCorePlugin plugin;
+    private final Component PREFIX, ERROR_PREFIX;
 
     public DiscordCommand(VelocityCorePlugin plugin) {
         this.plugin = plugin;
+
+        this.PREFIX = plugin.getDiscordManager().getPREFIX();
+        this.ERROR_PREFIX = Component.text("ERROR").color(NamedTextColor.RED).decorate(TextDecoration.BOLD).append(Component.text(" || ")).color(NamedTextColor.DARK_GRAY);
     }
 
     @Override
@@ -24,25 +34,41 @@ public class DiscordCommand implements SimpleCommand {
         }
 
         if (!player.hasPermission("virtual.command.discord")) {
-            player.sendMessage(Component.text("No tienes permisos para ejecutar este comando.").color(NamedTextColor.RED));
-            return;
-        }
-
-        if (plugin.getDiscordManager().getCodeMap().containsValue(player.getUniqueId())) {
-            player.sendMessage(Component.text("Ya tienes un código de verificación pendiente.").color(NamedTextColor.RED));
+            player.sendMessage(ERROR_PREFIX.append(Component.text("No tienes permisos para ejecutar este comando.").color(NamedTextColor.WHITE)));
             return;
         }
 
         User user = plugin.getUserManager().getUser(player.getUniqueId());
 
         if (user.isVerified()) {
-            player.sendMessage(Component.text("Ya estás verificado en el servidor de Discord.").color(NamedTextColor.RED));
+            player.sendMessage(ERROR_PREFIX.append(Component.text("Ya has vinculado tu cuenta.")).color(NamedTextColor.WHITE));
             return;
         }
 
-        String code = Utils.generateCode(8, true, true);
+        if (plugin.getDiscordManager().getCodeMap().containsValue(player.getUniqueId())) {
+            String code = plugin.getDiscordManager().getCodeMap().entrySet().stream().filter(entry -> entry.getValue().equals(player.getUniqueId())).findFirst().get().getKey();
+            player.sendMessage(PREFIX.append(Component.text("Tu código de verificación es: ")).color(NamedTextColor.WHITE).append(Component.text(code).color(NamedTextColor.GREEN).clickEvent(ClickEvent.copyToClipboard(code))));
+            return;
+        }
 
+        String code = Utils.generateCode(6, true, true);
         plugin.getDiscordManager().getCodeMap().put(code, player.getUniqueId());
-        player.sendMessage(Component.text("Tu código es: ").color(NamedTextColor.WHITE).append(Component.text(code).color(NamedTextColor.GREEN)));
+
+        player.sendMessage(PREFIX.append(Component.text("Tu código de verificación es: ").color(NamedTextColor.WHITE).append(Component.text(code).color(NamedTextColor.GREEN).clickEvent(ClickEvent.copyToClipboard(code)))));
+        scheduleCodeRemoval(code);
+    }
+
+    public void scheduleCodeRemoval(String code) {
+        plugin.getServer().getScheduler().buildTask(this, () -> {
+            Map<String, UUID> codeMap = plugin.getDiscordManager().getCodeMap();
+            Player player = plugin.getServer().getPlayer(codeMap.get(code)).orElse(null);
+
+            if (codeMap.containsKey(code)) {
+                codeMap.remove(code);
+
+                if (player != null)
+                    player.sendMessage(ERROR_PREFIX.append(Component.text("Tu código de verificación ha expirado.")).color(NamedTextColor.WHITE));
+            }
+        }).delay(30, TimeUnit.SECONDS).schedule();
     }
 }

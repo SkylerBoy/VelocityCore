@@ -12,6 +12,9 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.utils.Compression;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +37,8 @@ public class DiscordManager extends ListenerAdapter {
 
     private final Map<String, UUID> codeMap;
     private final Map<String, TextChannel> channelMap = new HashMap<>();
+
+    private final Component PREFIX = Component.text("DISCORD").color(NamedTextColor.GOLD).decorate(TextDecoration.BOLD).append(Component.text(" || ")).color(NamedTextColor.DARK_GRAY);
 
     public DiscordManager(VelocityCorePlugin plugin) {
         this.plugin = plugin;

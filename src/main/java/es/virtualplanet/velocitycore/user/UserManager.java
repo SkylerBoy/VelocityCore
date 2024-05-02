@@ -75,4 +75,8 @@ public class UserManager {
             });
         }
     }
+
+    public void updateDiscordId(User user, long discordId) {
+        plugin.getMySQL().updateDiscordId(user, discordId);
+    }
 }

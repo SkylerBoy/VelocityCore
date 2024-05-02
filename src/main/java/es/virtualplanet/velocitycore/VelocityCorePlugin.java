@@ -1,6 +1,7 @@
 package es.virtualplanet.velocitycore;
 
 import com.google.inject.Inject;
+import com.nickuc.login.api.nLoginAPI;
 import com.velocitypowered.api.event.EventManager;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -69,6 +70,7 @@ public class VelocityCorePlugin {
     private MainConfig config;
 
     private LuckPerms luckPerms;
+    private nLoginAPI nLogin;
 
     @Inject
     public VelocityCorePlugin(ProxyServer server, Logger logger) {
@@ -104,6 +106,7 @@ public class VelocityCorePlugin {
         punishManager = new PunishManager(this);
 
         luckPerms = LuckPermsProvider.get();
+        nLogin = nLoginAPI.getApi();
 
         // Register listeners.
         EventManager eventManager = server.getEventManager();

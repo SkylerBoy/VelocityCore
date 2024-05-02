@@ -29,11 +29,9 @@ public class MySQL {
 
         try {
             try(Connection connection = getConnection()){
-                Statement statement = connection.createStatement();;
-
-                statement.executeUpdate(Statements.USERS_TABLE.toString());
-                statement.executeUpdate(Statements.STAFF_TABLE.toString());
-                //statement.executeUpdate(Statements.DISCORD_TABLE.toString());
+                for (Statements statement : Statements.values()) {
+                    connection.prepareStatement(statement.toString()).execute();
+                }
             }
 
             plugin.getLogger().info("MySQL inicializada correctamente.");
@@ -129,15 +127,14 @@ public class MySQL {
         CompletableFuture.runAsync(() -> {
             try (Connection connection = getConnection()){
                 PreparedStatement statement = connection.prepareStatement("INSERT INTO `users` (" +
-                        "username, uuid, first_join, last_server, discord_id) VALUES " +
-                        "(?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+                        "username, uuid, first_join, last_server) VALUES " +
+                        "(?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
 
                 statement.setString(1, user.getName());
                 statement.setBytes(2, Utils.convertUUIDToBytes(user.getUniqueId()));
 
                 statement.setTimestamp(3, Timestamp.from(Instant.now()));
                 statement.setString(4, null);
-                statement.setLong(5, 0L);
                 statement.executeUpdate();
 
                 ResultSet resultSet = statement.getGeneratedKeys();
@@ -159,12 +156,11 @@ public class MySQL {
 
     public void saveUserDataSync(User user) {
         try (Connection connection = getConnection()) {
-            PreparedStatement statement = connection.prepareStatement("UPDATE `users` SET username = ?, last_server = ?, discord_id = ? WHERE id = ? LIMIT 1");
+            PreparedStatement statement = connection.prepareStatement("UPDATE `users` SET username = ?, last_server = ? WHERE id = ? LIMIT 1");
 
             statement.setString(1, user.getName());
             statement.setString(2, user.getLastServer());
-            statement.setLong(3, user.getDiscordId());
-            statement.setInt(4, user.getId());
+            statement.setInt(3, user.getId());
 
             statement.executeUpdate();
             statement.close();
@@ -318,6 +314,7 @@ public class MySQL {
     }
 
     public long getDiscordId(UUID uniqueId) {
+        /*
         try (Connection connection = getConnection()) {
             PreparedStatement statement = connection.prepareStatement("SELECT discord_id FROM `users` WHERE uuid = ? LIMIT 1");
 
@@ -333,80 +330,25 @@ public class MySQL {
         } catch (SQLException exception) {
             throw new RuntimeException(exception);
         }
+         */
 
         return 0L;
     }
 
-    /*
-    protected final VelocityCorePlugin plugin = VelocityCorePlugin.getInstance();
+    public void updateDiscordId(User user, long discordId) {
+        CompletableFuture.runAsync(() -> {
+            try (Connection connection = getConnection()) {
+                PreparedStatement statement = connection.prepareStatement("INSERT INTO discord_data (discord_id, user_id, date) VALUES (?,?,?)");
 
-    public abstract Connection getConnection() throws SQLException;
+                statement.setLong(1, discordId);
+                statement.setInt(2, user.getId());
+                statement.setTimestamp(3, Timestamp.from(Instant.now()));
 
-    public abstract void closeConnection();
-    public abstract void refreshConnection();
-
-
-    public void loadStaffPlayer(UUID uniqueId) {
-        StaffPlayer staffPlayer = loadPlayerData(uniqueId);
-
-        if (staffPlayer == null) {
-            return;
-        }
-
-        plugin.getStaffManager().getStaffList().put(uniqueId, staffPlayer);
-    }
-
-    private StaffPlayer loadPlayerData(UUID uniqueId) {
-        // set a temporal random name
-        StaffPlayer staffPlayer = new StaffPlayer(uniqueId);
-        String uuidString = uniqueId.toString();
-
-        try (Connection connection = getConnection()) {
-            boolean loaded = false;
-
-            try (PreparedStatement st = connection.prepareStatement(Statements.LOAD_STAFF.getStatement("staff_data"))) {
-                st.setString(1, uuidString);
-
-                try (ResultSet result = st.executeQuery()) {
-                    if (result.next()) {
-                        loadStaffData(result, staffPlayer);
-                        loaded = true;
-                    }
-                }
+                statement.executeUpdate();
+                statement.close();
+            } catch (SQLException exception) {
+                throw new RuntimeException("Error updating discord id for '" + user.getName() + "': " + exception.getMessage());
             }
-
-            if (!loaded) {
-                return staffPlayer;
-            }
-        } catch (SQLException exception) {
-            plugin.getLogger().warn("Hubo un error al cargar los datos de {}: {}",  uuidString, exception.getMessage());
-        }
-
-        return staffPlayer;
+        });
     }
-
-    private void loadStaffData(ResultSet r, StaffPlayer staffPlayer) throws SQLException {
-        staffPlayer.setPassword(r.getString("password"));
-        staffPlayer.setStaffMode(r.getBoolean("staffmode"));
-    }
-
-    public void savePlayer(StaffPlayer staffPlayer) {
-        try (Connection connection = getConnection()) {
-            try (PreparedStatement st = connection.prepareStatement(Statements.SAVE_STAFF_DATA.getStatement("staff_data"))) {
-                st.setString(1, staffPlayer.getUniqueId().toString());
-                st.setString(2, staffPlayer.getPassword());
-                st.setBoolean(3, staffPlayer.isStaffMode());
-
-                st.executeUpdate();
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
-    }
-
-    public void savePlayerAsync(UUID uniqueId, StaffPlayer staffPlayer) {
-        CompletableFuture.runAsync(() -> savePlayer(staffPlayer));
-        plugin.getStaffManager().getStaffList().remove(uniqueId, staffPlayer);
-    }
-     */
 }

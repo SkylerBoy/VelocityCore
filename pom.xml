@@ -12,9 +12,6 @@
     <name>VelocityCore</name>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -33,7 +30,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.4</version>
+                <version>3.5.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -143,13 +140,6 @@
             <artifactId>nlogin-api</artifactId>
             <version>10.2</version>
             <scope>provided</scope>
-        </dependency>
-        <!-- nLogin JavaDocs -->
-        <dependency>
-            <groupId>com.nickuc.login</groupId>
-            <artifactId>nlogin-api</artifactId>
-            <version>10.2</version>
-            <scope>javadocs</scope>
         </dependency>
     </dependencies>
 </project>
